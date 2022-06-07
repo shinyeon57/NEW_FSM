@@ -33,9 +33,8 @@ static Serial pc(USBTX, USBRX);
 //application event handler : generating SDU from keyboard input
 static void L3service_processInputWord(void)
 {
-    char input_exit;                                                         ///////esc두번받으려고
     char c = pc.getc();
-    if (!L3_event_checkEventFlag(L3_event_dataToSend))                      ////////event != modectrl일때추가해야initFSM빠져나올것같은데??
+    if (!L3_event_checkEventFlag(L3_event_dataToSend))                      
     {
         if (c == '\n' || c == '\r')
         {
@@ -54,75 +53,23 @@ static void L3service_processInputWord(void)
             }
             else
             {
-                if (c == '\t')                                                  ///////TAB입력하면
+                if (strncmp((const char*)originalWord, "#DND ",9) == 0)        //#DND입력                                        
                 {       
                     L3_event_setEventFlag(L3_event_MODEctrlRcvd_DND);
                     pc.printf("\n DND MODE ON!\n");
-                    main_state = L3STATE_DND;                            ///////state=cnn이고
                     L3_dnd_timer_startTimer();                                  ///////dnd용 2시간 timer시작한다 
                 }
-                else if (c == 27)                                              ///////esc입력하면
+                else if (strncmp((const char*)originalWord, "#EXIT ",9) == 0)       //#EXIT입력
                 {
-                    //originalWord[wordLen++] = '\0';                             //////초기화시키고
                     L3_event_setEventFlag(L3_event_MODEctrlRcvd_EXIT);               /////event 설정(esc두번받으려고)
-                    pc.printf("\n ARE YOU SURE EXITING THIS CHAT?\n");
-                    main_state = L3STATE_CNN;                            ///////state=CNN이고
-                    pc.scanf("%c", &input_exit);                                //////한번더입력받아야됨
-
-                        if(input_exit == 27)                                    //////한번더esc입력되면
-                        {
-                            pc.printf("\n exit the chatting mode! \n");
-                            main_state = L3STATE_IDLE;                          ///////state=IDLE이고
-                        }
-                        else                                                    //////esc아닌 다른 키 들어오면
-                        {
-                            L3_event_clearEventFlag(L3_event_MODEctrlRcvd_EXIT);
-                            pc.printf("\n cancelled exit the chatting mode! \n");
-                            main_state = L3STATE_CNN;                            ///////state=tx로 돌아온다
-                        }
+                    pc.printf("\nEXITING THIS CHATTING\n");
                 }
             }
         }
     }
-    //=====================================================================================
-    else if (main_state == L3STATE_IDLE)
-    {
-        L3_event_setEventFlag(L3_event_MODEctrlRcvd);              
-
-        pc.printf(":: ENTER THE MODE ::\nTAB : DND MODE, ESC : EXIT MODE, C : CONNECTION MODE\n");      //**************************************************//
-        char input_mode = pc.getc();  
-
-        if (L3_event_checkEventFlag(L3_event_MODEctrlRcvd))
-        {    
-            originalMode[modeLen++] = input_mode;
-
-            if(input_mode == '\t')                                      //dnd mode = tab key
-            {
-                L3_event_setEventFlag(L3_event_MODEctrlRcvd_DND);
-                L3_dnd_timer_startTimer();                          //////timer_dnd돌리고 
-                main_state = L3STATE_DND;
-            }
-            /*else if(input_mode == 27)                               //exit mode = esc key
-            {
-                pc.printf("[ERROR]YOU DON'T CONNECTING WITH ANYONE!\n");
-                main_state = L3STATE_IDLE;                          //이상황이면이함수끝나고init_FSM바로종료되고다시시작해야됨....
-            }*/
-            else if(input_mode == 27)                             //connection mode = enter key
-            {
-                L3_event_setEventFlag(L3_event_MODEctrlRcvd_CNN);
-                main_state = L3STATE_CNN;
-            }
-            else                                  //************************************그냥문자enter안치면안넘어가고enter치면error문구두번실행
-            {
-                pc.printf("[ERROR] WRONG INPUT! TRY AGAIN\n");
-                L3service_processInputMode();
-            }
-        }
-    
     L3_event_clearEventFlag(L3_event_MODEctrlRcvd);   
-    }
-    //=====================================================================================
 }
+
 
 //mode 진입을 위한 제어 key SDU 생성=====================================
 static void L3service_processInputMode(void)
@@ -136,23 +83,16 @@ static void L3service_processInputMode(void)
     {    
         originalMode[modeLen++] = input_mode;
 
-        if(input_mode == '\t')                                      //dnd mode = tab key
+        if(strncmp((const char*)originalWord, "#DND ",9) == 0)                                      //dnd mode 
         {
             L3_event_setEventFlag(L3_event_MODEctrlRcvd_DND);
-            L3_dnd_timer_startTimer();                          //////timer_dnd돌리고 
-            main_state = L3STATE_DND;
+            L3_dnd_timer_startTimer();                                                              //////timer_dnd돌리고 
         }
-        /*else if(input_mode == 27)                               //exit mode = esc key
-        {
-            pc.printf("[ERROR]YOU DON'T CONNECTING WITH ANYONE!\n");
-            main_state = L3STATE_IDLE;                          //이상황이면이함수끝나고init_FSM바로종료되고다시시작해야됨....
-        }*/
-        else if(input_mode == 27)                             //connection mode = enter key
+        else if(strncmp((const char*)originalWord, "#CNN ",9) == 0)                                 //connection mode
         {
             L3_event_setEventFlag(L3_event_MODEctrlRcvd_CNN);
-            main_state = L3STATE_CNN;
         }
-        else                                  //************************************그냥문자enter안치면안넘어가고enter치면error문구두번실행
+        else                                  
         {
             pc.printf("[ERROR] WRONG INPUT! TRY AGAIN\n");
             L3service_processInputWord();
@@ -186,7 +126,7 @@ void L3_FSMrun(void)
     {
         case L3STATE_IDLE: //IDLE state description
             
-            //L3service_processInputMode();                   //******************************************************************************MODE입력받기시작
+            L3service_processInputMode();                   
 
             if (L3_event_checkEventFlag(L3_event_msgRcvd)) //if data reception event happens
             {
@@ -232,6 +172,14 @@ void L3_FSMrun(void)
 
                 L3_event_clearEventFlag(L3_event_dataToSend);
             }
+            else if(L3_event_checkEventFlag(L3_event_MODEctrlRcvd_CNN))
+            {
+                main_state = L3STATE_DND;
+            }
+            else if(L3_event_checkEventFlag(L3_event_MODEctrlRcvd_DND))
+            {
+                main_state = L3STATE_CNN;
+            }
             break;
 
         case L3STATE_DND :                                   ///////////////////state = cnn
@@ -247,7 +195,6 @@ void L3_FSMrun(void)
             break;
 
         case L3STATE_CNN :                                           ///////////////////state = tx
-            pc.printf("ddddddddddddddddddddddddd");
             if(L3_event_checkEventFlag(L3_event_MODEctrlRcvd_CNN))
             {  
                 /*    
@@ -274,22 +221,10 @@ void L3_FSMrun(void)
             else if(L3_event_checkEventFlag(L3_event_MODEctrlRcvd_EXIT))
             {
                 //L3_event_setEventFlag(L3_event_MODEctrlRcvd_EXIT);               /////event 설정(esc두번받으려고)
-                pc.printf("\n ARE YOU SURE EXITING THIS CHAT?\n");
-                main_state = L3STATE_CNN;                            ///////state=CNN이고
-                pc.scanf("%c", &input_exit);                                //////한번더입력받아야됨
-
-                if(input_exit == 27)                                    //////한번더esc입력되면
-                {
-                    pc.printf("\n exit the chatting mode! \n");
-                    main_state = L3STATE_IDLE;                          ///////state=IDLE이고
-                }
-                else                                                    //////esc아닌 다른 키 들어오면
-                {
-                    L3_event_clearEventFlag(L3_event_MODEctrlRcvd_EXIT);
-                    pc.printf("\n cancelled exit the chatting mode! \n");
-                    main_state = L3STATE_CNN;                            ///////state=tx로 돌아온다
-                }
+                pc.printf("\nEXITING THIS CHATTING\n");
+                main_state = L3STATE_IDLE;                                          ///////state=CNN이고
             }
+        break;
 
         default :
             break;
