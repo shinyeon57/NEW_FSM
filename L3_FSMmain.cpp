@@ -53,15 +53,15 @@ static void L3service_processInputWord(void)
             }
             else
             {
-                if (strncmp((const char*)originalWord, "#DND ",9) == 0)        //#DND입력                                        
+                if (strncmp((const char*)originalWord, "#DND ",9) == 0)             ////#DND입력                                        
                 {       
                     L3_event_setEventFlag(L3_event_MODEctrlRcvd_DND);
                     pc.printf("\n DND MODE ON!\n");
-                    L3_dnd_timer_startTimer();                                  ///////dnd용 2시간 timer시작한다 
+                    L3_dnd_timer_startTimer();                                      ////dnd용 2시간 timer시작한다 
                 }
-                else if (strncmp((const char*)originalWord, "#EXIT ",9) == 0)       //#EXIT입력
+                else if (strncmp((const char*)originalWord, "#EXIT ",9) == 0)       ////#EXIT입력
                 {
-                    L3_event_setEventFlag(L3_event_MODEctrlRcvd_EXIT);               /////event 설정(esc두번받으려고)
+                    L3_event_setEventFlag(L3_event_MODEctrlRcvd_EXIT);               
                     pc.printf("\nEXITING THIS CHATTING\n");
                 }
             }
@@ -86,7 +86,7 @@ static void L3service_processInputMode(void)
         if(strncmp((const char*)originalWord, "#DND ",9) == 0)                                      //dnd mode 
         {
             L3_event_setEventFlag(L3_event_MODEctrlRcvd_DND);
-            L3_dnd_timer_startTimer();                                                              //////timer_dnd돌리고 
+            L3_dnd_timer_startTimer();                                                              //////timer_dnd on 
         }
         else if(strncmp((const char*)originalWord, "#CNN ",9) == 0)                                 //connection mode
         {
@@ -100,6 +100,20 @@ static void L3service_processInputMode(void)
     }
     
     L3_event_clearEventFlag(L3_event_MODEctrlRcvd);                  
+}
+
+//destination ID 설정을 위한 함수=====================================
+static void L3service_settingInputId(void)
+{     
+    pc.printf("\n:: Give ID for the destination \n ex) DstID : x\n ");    
+
+    if (strncmp((const char*)originalWord, "DstID: ",9) == 0)
+    {
+    uint8_t dstid = originalWord[9] - '0';
+    debug("[L3] requesting to set to dest id %i\n", dstid);
+    L3_LLI_configReqFunc(L2L3_CFGTYPE_DSTID, dstid);  
+    pc.printf("\n:: ID for the destination : %i\n", dstid);     
+    }  
 }
 
 void L3_initFSM()
@@ -175,14 +189,16 @@ void L3_FSMrun(void)
             else if(L3_event_checkEventFlag(L3_event_MODEctrlRcvd_CNN))
             {
                 main_state = L3STATE_DND;
+                L3_event_clearEventFlag(L3_event_MODEctrlRcvd_CNN);
             }
             else if(L3_event_checkEventFlag(L3_event_MODEctrlRcvd_DND))
             {
                 main_state = L3STATE_CNN;
+                L3_event_clearEventFlag(L3_event_MODEctrlRcvd_DND);
             }
             break;
 
-        case L3STATE_DND :                                   ///////////////////state = cnn
+        case L3STATE_DND :                                               ///////////////////state = dnd
             if(L3_event_checkEventFlag(L3_event_MODEctrlRcvd_DND))       
             {
                 if(L3_dnd_timer_getTimerStatus() == 0)                    ///////////////////dnd_timeout event happens
@@ -191,36 +207,22 @@ void L3_FSMrun(void)
                     pc.printf("FAIL TO CONNECTION!\n");
                     main_state = L3STATE_IDLE ;
                 }
+                else
+                {
+                    pc.printf("%i is on DND MODE!\n", dstid)
+                }
             }
             break;
 
-        case L3STATE_CNN :                                           ///////////////////state = tx
+        case L3STATE_CNN :                                              ///////////////////state = cnn
             if(L3_event_checkEventFlag(L3_event_MODEctrlRcvd_CNN))
             {  
-                /*    
-                uint8_t dstid = originalWord[9] - '0';
-                L3_LLI_configReqFunc(L2L3_CFGTYPE_DSTID, dstid);      //처음에 destination id = 0으로 설정되어 있으니까 변경 = 입력. 
-
+                L3service_settingInputId(); 
                 L3_event_clearEventFlag(L3_event_MODEctrlRcvd_CNN);
-
-                pc.printf(":: ID for the destination : %i\n", dstid);   
-                main_state = L3STATE_TX;   
-                */
-                char dstid = pc.getc();                         
-                //uint8_t dstid;
-                pc.printf("\n:: Give ID for the destination : ");            
-
-                dstid = originalWord[wordLen++];
-                //pc.scanf("%i", &dstid);
-                debug("[L3] connectiong to dest id %i\n", dstid);
-                L3_LLI_configReqFunc(L2L3_CFGTYPE_DSTID, dstid);      //처음에 destination id = 0으로 설정되어 있으니까 변경 = 입력. 
-                pc.printf("\n:: ID for the destination : %i\n", dstid);   
-                L3_event_clearEventFlag(L3_event_MODEctrlRcvd_CNN);
-                main_state = L3STATE_CNN;
+                //main_state = L3STATE_CNN;
             }
             else if(L3_event_checkEventFlag(L3_event_MODEctrlRcvd_EXIT))
             {
-                //L3_event_setEventFlag(L3_event_MODEctrlRcvd_EXIT);               /////event 설정(esc두번받으려고)
                 pc.printf("\nEXITING THIS CHATTING\n");
                 main_state = L3STATE_IDLE;                                          ///////state=CNN이고
             }
