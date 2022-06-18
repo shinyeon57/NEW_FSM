@@ -45,7 +45,7 @@ void L3_dnd_timer_timeoutHandler(void)
 //timer related functions ---------------------------
 void L3_dnd_timer_startTimer()
 {
-    uint8_t waitTime = 7200;            //2시간
+    uint8_t waitTime = 1;//7200;            //2시간
     timer.attach(L3_timer_timeoutHandler, waitTime);
     timerStatus = 1;
 }

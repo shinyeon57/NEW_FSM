@@ -53,13 +53,15 @@ static void L3service_processInputWord(void)
             }
             else
             {
-                if (strncmp((const char*)originalWord, "#DND ",9) == 0)             ////#DND입력                                        
+                if (c == '\n')             ////#DND입력                                        
                 {       
+                    pc.printf("it's working");
+
                     L3_event_setEventFlag(L3_event_MODEctrlRcvd_DND);
                     pc.printf("\n DND MODE ON!\n");
                     L3_dnd_timer_startTimer();                                      ////dnd용 2시간 timer시작한다 
                 }
-                else if (strncmp((const char*)originalWord, "#EXIT ",9) == 0)       ////#EXIT입력
+                else if (strncmp((const char*)originalWord, "#EXIT ", 5) == 0)       ////#EXIT입력
                 {
                     L3_event_setEventFlag(L3_event_MODEctrlRcvd_EXIT);               
                     pc.printf("\nEXITING THIS CHATTING\n");
@@ -99,12 +101,15 @@ static void L3service_processInputMode(void)
         }
     }
     
-    L3_event_clearEventFlag(L3_event_MODEctrlRcvd);                  
+   // L3_event_clearEventFlag(L3_event_MODEctrlRcvd);                  
 }
 
 //destination ID 설정을 위한 함수=====================================
-static void L3service_settingInputId(void)
+static uint8_t timerStatus = 0;
+uint8_t L3service_settingInputId(void)
 {     
+    uint8_t dstid_return;
+
     pc.printf("\n:: Give ID for the destination \n ex) DstID : x\n ");    
 
     if (strncmp((const char*)originalWord, "DstID: ",9) == 0)
@@ -112,12 +117,16 @@ static void L3service_settingInputId(void)
     uint8_t dstid = originalWord[9] - '0';
     debug("[L3] requesting to set to dest id %i\n", dstid);
     L3_LLI_configReqFunc(L2L3_CFGTYPE_DSTID, dstid);  
-    pc.printf("\n:: ID for the destination : %i\n", dstid);     
+    dstid_return = dstid;
+    pc.printf("\n:: ID for the destination : %i\n", dstid_return);     
     }  
+
+    return dstid_return;
 }
 
 void L3_initFSM()
 {
+    pc.printf("it'ssssssworking");
     //L3service_processInputMode();
     //initialize service layer
     pc.attach(&L3service_processInputWord, Serial::RxIrq);
@@ -140,7 +149,7 @@ void L3_FSMrun(void)
     {
         case L3STATE_IDLE: //IDLE state description
             
-            L3service_processInputMode();                   
+            //L3service_processInputMode();                   
 
             if (L3_event_checkEventFlag(L3_event_msgRcvd)) //if data reception event happens
             {

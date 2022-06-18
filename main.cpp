@@ -15,6 +15,7 @@ uint8_t input_destId=0;
 //FSM operation implementation ------------------------------------------------
 int main(void){
 
+    pc.printf("hohoho");
     //initialization
     pc.printf("------------------ protocol stack starts! --------------------------\n");
         //source & destination ID setting
@@ -26,8 +27,6 @@ int main(void){
 
     pc.printf("YOUR ID IS %i\n", input_thisId);
     //pc.printf("endnode : %i, dest : %i\n", input_thisId, input_destId);
-    
-    
 
     //initialize lower layer stacks
     L2_initFSM(input_thisId, input_destId);
